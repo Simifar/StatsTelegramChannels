@@ -1,0 +1,22 @@
+# Секретные файлы
+.env
+secrets/
+credentials.json
+*.session  # Файлы сессий Telethon
+
+# Системные файлы
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Логи и временные файлы
+*.log
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Данные сессий
+.streamlit/
