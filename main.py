@@ -27,6 +27,15 @@ TZ_MOSCOW = pytz.timezone("Europe/Moscow")
 async def process_channel(client, sheet, channel_username,
                           days_ago, start_date, end_date,
                           date_label, month_name):
+    try:
+    
+        await client.connect()
+        await client.get_me()
+    except ConnectionError as e:
+        print(f"Ошибка подключения: {e}")
+    except Exception as e:
+        print(f"Неизвестная ошибка: {e}")
+
 
     async with SEM:
         print(f"\nОбрабатываем канал: {channel_username}")
