@@ -87,7 +87,11 @@ async def calculate_metrics(entity, messages, client, days_ago=None, start_date=
     er_percent = ((total_reactions + total_comments + total_forwards) / total_views * 100) if total_views > 0 else 0
     err_percent = (avg_reach / subscribers * 100) if subscribers else 0
 
-    top_posts = await get_top_posts(filtered_messages)
+    try:
+        top_posts = await get_top_posts(filtered_messages, client)
+    except Exception as e:
+        print(f"Ошибка при получении топ-постов: {str(e)}")
+        top_posts = []
 
     return {
         "subscribers": subscribers,

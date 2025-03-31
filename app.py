@@ -24,26 +24,55 @@ async def collect_stats(channels, period_start, period_end):
     client = None
     try:
         client = TelegramClient('streamlit_session', API_ID, API_HASH)
-        await client.connect()  # Явное подключение
+        await client.connect()
         
         if not await client.is_user_authorized():
             await authenticate_client(client, PHONE_NUMBER)
         
         metrics_all = []
-        for channel_username in channels:
-            entity = await client.get_entity(channel_username)
-            messages = await fetch_messages_in_period(client, entity, period_start, period_end, TZ_MOSCOW)
-            metrics = await calculate_metrics(entity, messages, client, start_date=period_start, end_date=period_end, tz=TZ_MOSCOW)
-            metrics['Канал'] = channel_username
-            metrics['top_posts'] = await get_top_posts(messages)
-            metrics_all.append(metrics)
+        processed_channels = set()
         
+        for channel_username in channels:
+            if channel_username in processed_channels:
+                continue
+                
+            try:
+                entity = await client.get_entity(channel_username)
+                messages = await fetch_messages_in_period(
+                    client, entity, 
+                    period_start, 
+                    period_end, 
+                    TZ_MOSCOW
+                )
+                
+                # Получаем метрики
+                metrics = await calculate_metrics(
+                    entity, messages, client,
+                    start_date=period_start,
+                    end_date=period_end,
+                    tz=TZ_MOSCOW
+                )
+                
+                # Получаем топ посты
+                top_posts = await get_top_posts(messages, client)
+                
+                metrics.update({
+                    'Канал': channel_username,
+                    'top_posts': top_posts[:3] if top_posts else []
+                })
+                
+                metrics_all.append(metrics)
+                processed_channels.add(channel_username)
+                
+            except Exception as e:
+                st.error(f"Ошибка обработки {channel_username}: {str(e)}")
+                continue
+                
         return metrics_all
+        
     finally:
         if client and client.is_connected():
             await client.disconnect()
-
-# ... остальная часть интерфейса без изменений ...
 
 # Интерфейс
 st.set_page_config(page_title="Telegram Analytics", layout="wide")
@@ -76,33 +105,43 @@ elif period_choice == "Месяц":
 
 def format_top_posts(posts):
     if not posts:
-        return "Нет данных"
-    return "\n".join(
-        f"{idx + 1}. [Пост {p['id']}]({p['link']}) | 👀{p['views']} ❤️{p['reactions']} 💬{p['comments']} ↩️{p['forwards']}"
+        return ["Нет данных"]
+    return [
+        f"{idx+1}. [Пост {p.get('id', '')}]({p['link']}) 👀{p['views']} ❤️{p['reactions']} 💬{p['comments']}"
         for idx, p in enumerate(posts)
-    )
+    ]
 
 if st.button("🚀 Собрать статистику"):
     with st.spinner("Идёт сбор данных..."):
         try:
             stats = asyncio.run(collect_stats(channels, period_start, period_end))
-            df = pd.DataFrame(stats)
-            # В секции создания DataFrame:
-            df = pd.DataFrame(stats)
-            df['avg_reach'] = df['avg_reach'].round(2)
-            df['er_percent'] = df['er_percent'].round(2).astype(str) + '%'
-            df['err_percent'] = df['err_percent'].round(2).astype(str) + '%'
+            if not stats:
+                st.warning("Нет данных для отображения")
+                exit()
+                
+            # Формируем DataFrame
+            df = pd.DataFrame([{
+                'Канал': m['Канал'],
+                'Подписчики': m['subscribers'],
+                'Посты': m['total_posts'],
+                'Просмотры': m['total_views'],
+                'Реакции': m['total_reactions'],
+                'Комментарии': m['total_comments'],
+                'Репосты': m['total_forwards'],
+                'Средний охват': round(m['avg_reach'], 2),
+                'ER': f"{m['er_percent']:.2f}%",
+                'ERR': f"{m['err_percent']:.2f}%"
+            } for m in stats])
             
-            # Основная таблица
+            # Удаляем дубликаты
+            df = df.drop_duplicates(subset=['Канал'])
+            
+            # Отображение таблицы
             st.subheader("📌 Общая статистика")
-            st.dataframe(df[['Канал', 'subscribers', 'total_posts', 'total_views', 
-                           'total_reactions', 'total_comments', 'total_forwards', 
-                           'avg_reach', 'er_percent', 'err_percent']])
-            
-            
+            st.dataframe(df)
+
             # Экспорт
             st.subheader("📤 Экспорт данных")
-            df = df.applymap(lambda x: str(x) if isinstance(x, (list, dict)) else x)
             csv = df.to_csv(index=False, sep=";").encode('utf-8-sig')
             st.download_button(
                 label="Скачать CSV",
@@ -110,14 +149,14 @@ if st.button("🚀 Собрать статистику"):
                 file_name="telegram_stats.csv",
                 mime="text/csv"
             )
-            
+
             # Топ посты
             st.subheader("🔥 Топ посты")
             for metric in stats:
-                
                 st.markdown(f"### 📢 {metric['Канал']}")
-                for idx, post in enumerate(metric['top_posts'], 1):
-                    st.markdown(f"{idx}. [Пост]({post['link']}) 👀 {post['views']} | 👍 {post['reactions']} | 💬 {post['comments']}")
-            
+                posts = format_top_posts(metric['top_posts'])
+                for post in posts:
+                    st.markdown(post)
+                    
         except Exception as e:
-            st.error(f"Ошибка: {str(e)}")
+            st.error(f"Критическая ошибка: {str(e)}")
