@@ -74,11 +74,24 @@ elif period_choice == "Месяц":
     period_start = TZ_MOSCOW.localize(datetime(year, month, 1))
     period_end = (period_start + timedelta(days=32)).replace(day=1) - timedelta(seconds=1)
 
+def format_top_posts(posts):
+    if not posts:
+        return "Нет данных"
+    return "\n".join(
+        f"{idx + 1}. [Пост {p['id']}]({p['link']}) | 👀{p['views']} ❤️{p['reactions']} 💬{p['comments']} ↩️{p['forwards']}"
+        for idx, p in enumerate(posts)
+    )
+
 if st.button("🚀 Собрать статистику"):
     with st.spinner("Идёт сбор данных..."):
         try:
             stats = asyncio.run(collect_stats(channels, period_start, period_end))
             df = pd.DataFrame(stats)
+            # В секции создания DataFrame:
+            df = pd.DataFrame(stats)
+            df['avg_reach'] = df['avg_reach'].round(2)
+            df['er_percent'] = df['er_percent'].round(2).astype(str) + '%'
+            df['err_percent'] = df['err_percent'].round(2).astype(str) + '%'
             
             # Основная таблица
             st.subheader("📌 Общая статистика")
@@ -86,9 +99,11 @@ if st.button("🚀 Собрать статистику"):
                            'total_reactions', 'total_comments', 'total_forwards', 
                            'avg_reach', 'er_percent', 'err_percent']])
             
+            
             # Экспорт
             st.subheader("📤 Экспорт данных")
-            csv = df.to_csv(index=False).encode('utf-8')
+            df = df.applymap(lambda x: str(x) if isinstance(x, (list, dict)) else x)
+            csv = df.to_csv(index=False, sep=";").encode('utf-8-sig')
             st.download_button(
                 label="Скачать CSV",
                 data=csv,
@@ -99,6 +114,7 @@ if st.button("🚀 Собрать статистику"):
             # Топ посты
             st.subheader("🔥 Топ посты")
             for metric in stats:
+                
                 st.markdown(f"### 📢 {metric['Канал']}")
                 for idx, post in enumerate(metric['top_posts'], 1):
                     st.markdown(f"{idx}. [Пост]({post['link']}) 👀 {post['views']} | 👍 {post['reactions']} | 💬 {post['comments']}")

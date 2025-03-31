@@ -7,3 +7,4 @@ nest_asyncio==1.6.0
 python-dotenv==1.0.1
 pandas==2.2.3
 plotly==6.0.0
+aiogram==3.6.0
