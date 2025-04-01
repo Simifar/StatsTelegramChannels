@@ -1,27 +1,24 @@
 from datetime import datetime, timedelta
 import pytz
-from telethon.tl.functions.channels import GetFullChannelRequest
-from ..metrics_calculator import calculate_metrics
+from metrics_calculator import calculate_metrics, fetch_messages_in_period
 
-async def analyze_channel(client, channel: str, days: int):
-    """Анализ канала за указанный период"""
-    try:
-        entity = await client.get_entity(channel)
-        period_end = datetime.now(pytz.utc)
-        period_start = period_end - timedelta(days=days)
-        
-        messages = await client.get_messages(
-            entity,
-            limit=None,
-            offset_date=period_end
-        )
-        
-        return await calculate_metrics(
-            entity=entity,
-            messages=messages,
-            client=client,
-            days_ago=days
-        )
-        
-    except Exception as e:
-        raise RuntimeError(f"Ошибка анализа: {str(e)}")
+TZ_MOSCOW = pytz.timezone("Europe/Moscow")
+
+async def analyze_channel(client, username: str, days: int):
+    entity = await client.get_entity(username)
+    now = datetime.now(TZ_MOSCOW)
+    period_start = now - timedelta(days=days)
+
+    messages = await fetch_messages_in_period(
+        client, entity, period_start, now, TZ_MOSCOW
+    )
+
+    metrics = await calculate_metrics(
+        entity=entity,
+        messages=messages,
+        client=client,
+        days_ago=days,
+        tz=TZ_MOSCOW
+    )
+    metrics["days"] = days
+    return metrics
