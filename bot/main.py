@@ -1,17 +1,14 @@
-import logging
 import asyncio
-from .loader import dp, bot
-from .handlers import base, stats, analyze, admin
+import logging
+from bot.loader import bot, dp
+from bot.handlers import base, payments
 
 dp.include_router(base.router)
-dp.include_router(stats.router)
-dp.include_router(analyze.router)
-dp.include_router(admin.router)
+dp.include_router(payments.router)
 
 logging.basicConfig(level=logging.INFO)
 
 async def main():
-    logging.info("Бот запущен.")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
