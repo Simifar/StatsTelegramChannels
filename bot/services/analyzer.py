@@ -1,24 +1,26 @@
 from datetime import datetime, timedelta
 import pytz
+from telethon import TelegramClient
+import sys, os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+
 from metrics_calculator import calculate_metrics, fetch_messages_in_period
+from telegram_utils import authenticate_client
+from bot.config import API_ID, API_HASH, PHONE_NUMBER
 
-TZ_MOSCOW = pytz.timezone("Europe/Moscow")
+TZ = pytz.timezone("Europe/Moscow")
 
-async def analyze_channel(client, username: str, days: int):
-    entity = await client.get_entity(username)
-    now = datetime.now(TZ_MOSCOW)
-    period_start = now - timedelta(days=days)
+async def analyze_channel(username: str, days: int):
+    now = datetime.now(TZ)
+    start_date = now - timedelta(days=days)
 
-    messages = await fetch_messages_in_period(
-        client, entity, period_start, now, TZ_MOSCOW
-    )
+    async with TelegramClient("bot_session", API_ID, API_HASH) as client:
+        if not await client.is_user_authorized():
+            await authenticate_client(client, PHONE_NUMBER)
 
-    metrics = await calculate_metrics(
-        entity=entity,
-        messages=messages,
-        client=client,
-        days_ago=days,
-        tz=TZ_MOSCOW
-    )
-    metrics["days"] = days
-    return metrics
+        entity = await client.get_entity(username)
+        messages = await fetch_messages_in_period(client, entity, start_date, now, TZ)
+        metrics = await calculate_metrics(entity, messages, client, start_date=start_date, end_date=now, tz=TZ)
+        metrics["days"] = days
+        return metrics

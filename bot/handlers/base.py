@@ -8,7 +8,10 @@ router = Router()
 async def cmd_start(message: Message):
     await message.answer(
         "👋 Привет! Я бот для анализа Telegram-каналов.\n"
-        "📊 Используй команду:\n"
-        "<code>/stats username_канала N_дней</code>\n"
-        "Пример: <code>/stats rezumus 7</code>"
+        "📊 Используй /analyze для анализа.\n"
+        "🔐 Доступ только для админов."
     )
+
+@router.message()
+async def show_id(message: Message):
+    await message.answer(f"🆔 Твой ID: <code>{message.from_user.id}</code>")

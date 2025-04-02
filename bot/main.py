@@ -1,11 +1,12 @@
 import logging
 import asyncio
-from loader import dp, bot
-from handlers import base, stats
+from .loader import dp, bot
+from .handlers import base, stats, analyze, admin
 
-# Регистрация роутеров
 dp.include_router(base.router)
 dp.include_router(stats.router)
+dp.include_router(analyze.router)
+dp.include_router(admin.router)
 
 logging.basicConfig(level=logging.INFO)
 

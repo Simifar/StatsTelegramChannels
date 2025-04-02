@@ -2,14 +2,17 @@ from aiogram import Router
 from aiogram.types import Message
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
-from loader import telethon_client
-from services.analyzer import analyze_channel
-from utils.formatters import format_stats
+from ..services.analyzer import analyze_channel
+from ..utils.formatters import format_stats
+from ..config import ADMINS
 
 router = Router()
 
 @router.message(Command("stats"))
 async def cmd_stats(message: Message):
+    if str(message.from_user.id) not in ADMINS:
+        return await message.answer("🚫 Только админы могут использовать этот бот.")
+
     args = message.text.split()
     if len(args) != 3:
         return await message.answer(
@@ -25,11 +28,7 @@ async def cmd_stats(message: Message):
         return await message.answer("❌ Укажите корректное число дней!")
 
     try:
-        if not telethon_client.is_connected():
-            await telethon_client.connect()
-
-        metrics = await analyze_channel(telethon_client, username, days)
+        metrics = await analyze_channel(username, days)
         await message.answer(format_stats(metrics), disable_web_page_preview=True)
-
     except Exception as e:
         await message.answer(f"⚠️ Ошибка: {str(e)}")

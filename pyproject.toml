@@ -1,0 +1,12 @@
+[project]
+name = "telegramstats"
+version = "0.1.0"
+description = "Telegram analytics bot with aiogram and telethon"
+authors = [{ name="Phandou", email="matafonovegor2@gmail.com" }]
+dependencies = [
+    "aiogram>=3.6.0",
+    "telethon==1.34.0",
+    "python-dotenv>=1.0.1",
+    "pytz>=2024.1"
+]
+requires-python = ">=3.9"
